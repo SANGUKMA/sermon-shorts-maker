@@ -256,7 +256,9 @@ with col1:
 with col2:
     scripture = st.text_input("성경 본문", placeholder="예: 요한복음 13:34-35")
 
-default_church = st.secrets.get("app", {}).get("default_church_name", "")
+default_church = ""
+if "app" in st.secrets:
+    default_church = str(st.secrets["app"].get("default_church_name", ""))
 church_name = st.text_input("교회명", value=default_church)
 
 sermon_text = st.text_area(
