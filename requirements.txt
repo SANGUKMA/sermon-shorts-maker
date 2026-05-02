@@ -15,6 +15,7 @@ PyJWT>=2.8.0
 # 오디오/자막
 pydub>=0.25.0
 srt>=3.5
+audioop-lts>=0.2.1; python_version >= "3.13"  # Python 3.13+에서 audioop 제거됨, pydub 의존성 보완
 
 # 파이프라인 인프라
 tenacity>=9.0.0
