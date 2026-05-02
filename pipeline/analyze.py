@@ -70,9 +70,12 @@ def analyze_sermon(
   - 스타일 지시: {style_label}
   - 필수 금지: halos around heads, saint statues, ornate cathedral, gold filigree, Catholic icons
   - 권장: simple wooden cross, modest Protestant church interior, plain windows
-- motion_prompt: 영어, 짧고 구체 (~20단어), Kling I2V용
-  - 자연스러운 움직임 (바람, 빛 변화, 인물의 작은 동작)
-  - 카메라 움직임은 부드럽게
+- motion_prompt: 영어, 10초 분량을 채우는 **3단계 시간순 동작** (~30단어), Kling I2V용
+  - 반드시 "First, ... Then, ... Finally, ..." 또는 "초반/중반/후반" 구조로 서로 다른 3개 동작 명시
+  - 한 동작이 반복/루프되지 않도록 각 단계는 시각적으로 구별되는 변화여야 함
+    (예: First, gentle wind moves the leaves. Then, the person slowly turns toward the light. Finally, hands open in a quiet prayer gesture.)
+  - 카메라 움직임은 부드럽게 (slow pan, subtle push-in 등)
+  - 자연스러운 움직임 우선 (바람, 빛 변화, 인물의 작은 동작)
 
 ────── 챕터 ↔ 씬 매핑 ──────
 - 챕터 흐름과 씬 흐름이 자연스럽게 매핑되도록 (1챕터 = 1~2씬 정도)
