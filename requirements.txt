@@ -1,0 +1,20 @@
+streamlit>=1.39.0
+
+# 핵심 API
+anthropic>=0.40.0
+google-genai>=0.5.0
+
+# TTS
+elevenlabs>=1.0.0
+
+# 이미지/I2V
+Pillow>=10.0
+requests>=2.31.0
+PyJWT>=2.8.0
+
+# 오디오/자막
+pydub>=0.25.0
+srt>=3.5
+
+# 파이프라인 인프라
+tenacity>=9.0.0

@@ -1,0 +1,51 @@
+# Streamlit secrets — 절대 커밋 금지
+.streamlit/secrets.toml
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 환경
+.venv/
+venv/
+env/
+.env
+.env.local
+
+# 출력물 (영상, 이미지, 오디오)
+output/
+tmp/
+*.mp4
+*.mp3
+*.wav
+*.png
+*.jpg
+*.jpeg
+!assets/**/*.png
+!assets/**/*.jpg
+!assets/**/*.jpeg
+
+# 폰트는 번들 (예외 처리)
+!assets/fonts/*.ttf
+!assets/fonts/*.otf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그
+logs/
+*.log
