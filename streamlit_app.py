@@ -269,7 +269,11 @@ with st.sidebar:
     _vid = st.secrets.get("ELEVENLABS_VOICE_ID", "")
     _key = st.secrets.get("ELEVENLABS_API_KEY", "")
     st.caption(f"Voice ID: `{_vid[:6]}...{_vid[-4:]}`" if _vid else "Voice ID: ⚠️ 미설정")
-    st.caption(f"API Key: `{_key[:6]}...{_key[-4:]}`" if _key else "API Key: ⚠️ 미설정")
+    st.caption(f"EL Key: `{_key[:6]}...{_key[-4:]}`" if _key else "EL Key: ⚠️ 미설정")
+    _ak = st.secrets.get("KLING_ACCESS_KEY", "")
+    _sk = st.secrets.get("KLING_SECRET_KEY", "")
+    st.caption(f"Kling AK: `{_ak[:4]}...{_ak[-4:]}` (len={len(_ak)})" if _ak else "Kling AK: ⚠️ 미설정")
+    st.caption(f"Kling SK: `{_sk[:4]}...{_sk[-4:]}` (len={len(_sk)})" if _sk else "Kling SK: ⚠️ 미설정")
     if "app" in st.secrets:
         st.caption(f"기본 교회명: `{st.secrets['app'].get('default_church_name', '미설정')}`")
     st.divider()
