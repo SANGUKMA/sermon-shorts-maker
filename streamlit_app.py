@@ -238,7 +238,10 @@ with st.sidebar:
         index=0,
     )
     st.divider()
-    st.caption(f"음성: `{st.secrets.get('ELEVENLABS_VOICE_ID', '미설정')[:8]}...`")
+    _vid = st.secrets.get("ELEVENLABS_VOICE_ID", "")
+    _key = st.secrets.get("ELEVENLABS_API_KEY", "")
+    st.caption(f"Voice ID: `{_vid[:6]}...{_vid[-4:]}`" if _vid else "Voice ID: ⚠️ 미설정")
+    st.caption(f"API Key: `{_key[:6]}...{_key[-4:]}`" if _key else "API Key: ⚠️ 미설정")
     if "app" in st.secrets:
         st.caption(f"기본 교회명: `{st.secrets['app'].get('default_church_name', '미설정')}`")
     st.divider()
