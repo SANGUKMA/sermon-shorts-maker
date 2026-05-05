@@ -245,6 +245,39 @@ with st.sidebar:
     if "app" in st.secrets:
         st.caption(f"기본 교회명: `{st.secrets['app'].get('default_church_name', '미설정')}`")
     st.divider()
+    if st.button("🔍 ElevenLabs 키 진단"):
+        import requests
+        try:
+            r = requests.get(
+                "https://api.elevenlabs.io/v1/user",
+                headers={"xi-api-key": _key},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                sub = data.get("subscription", {})
+                st.success(f"✅ 키 유효 — 플랜: {sub.get('tier', '?')}, "
+                           f"남은 char: {sub.get('character_limit', 0) - sub.get('character_count', 0)}")
+            else:
+                st.error(f"❌ /v1/user {r.status_code}: {r.text[:200]}")
+        except Exception as e:
+            st.error(f"❌ /v1/user 예외: {e}")
+
+        try:
+            r = requests.get(
+                f"https://api.elevenlabs.io/v1/voices/{_vid}",
+                headers={"xi-api-key": _key},
+                timeout=10,
+            )
+            if r.status_code == 200:
+                v = r.json()
+                st.success(f"✅ Voice 접근 가능 — 이름: {v.get('name', '?')}, "
+                           f"category: {v.get('category', '?')}")
+            else:
+                st.error(f"❌ /v1/voices/{{id}} {r.status_code}: {r.text[:200]}")
+        except Exception as e:
+            st.error(f"❌ voice 조회 예외: {e}")
+
     if st.button("🔄 새로 시작 (세션 초기화)"):
         for k in list(st.session_state.keys()):
             del st.session_state[k]
