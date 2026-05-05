@@ -28,8 +28,8 @@ class KlingI2VProvider:
         poll_interval: int = 10,
         timeout: int = 300,
     ):
-        self.access_key = access_key
-        self.secret_key = secret_key
+        self.access_key = access_key.strip()
+        self.secret_key = secret_key.strip()
         self.model = model
         self.duration = duration
         self.mode = mode
