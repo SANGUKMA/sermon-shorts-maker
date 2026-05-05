@@ -16,7 +16,7 @@ def generate_metadata(
     pastor_name: str = "",
     duration_seconds: int = 100,
     style_label: str = "유럽 만화 일러스트 + Kling AI I2V 애니메이션",
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
 ) -> dict:
     """설교 정보를 받아 YouTube 메타데이터 dict 반환.
 

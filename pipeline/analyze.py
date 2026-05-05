@@ -22,7 +22,7 @@ def analyze_sermon(
     style_label: str,
     target_chars: int = 960,
     n_scenes: int = 10,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
 ) -> dict:
     """설교 텍스트를 분석해 챕터(나레이션용) + 씬(영상 프롬프트) JSON 반환.
 
