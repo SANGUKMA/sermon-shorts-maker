@@ -54,6 +54,7 @@ def generate_clips(
     )
 
     clip_paths = []
+    errors = []
     for i, (sc, img) in enumerate(zip(scenes, image_paths)):
         out = clips_dir / f"scene_{sc['scene_id']:02d}.mp4"
 
@@ -69,6 +70,7 @@ def generate_clips(
         # 429 백오프 재시도
         backoffs = [30, 90, 180]
         success = False
+        last_err = ""
         for attempt, wait_after in enumerate(backoffs):
             try:
                 provider.generate(
@@ -81,8 +83,8 @@ def generate_clips(
                 clip_paths.append(str(out))
                 break
             except Exception as e:
-                err = str(e)
-                if "429" in err:
+                last_err = str(e)
+                if "429" in last_err:
                     logger.warning(f"클립 {sc['scene_id']} 429 (시도 {attempt+1}/3) — {wait_after}s 대기")
                     if progress_cb:
                         progress_cb(i + 1, len(scenes),
@@ -90,13 +92,16 @@ def generate_clips(
                     time.sleep(wait_after)
                     continue
                 logger.error(f"클립 {sc['scene_id']} 실패: {e}")
+                errors.append(f"씬 {sc['scene_id']}: {last_err[:200]}")
                 clip_paths.append("")
                 break
 
         if not success and len(clip_paths) <= i:
             clip_paths.append("")
+            if last_err and not any(f"씬 {sc['scene_id']}:" in x for x in errors):
+                errors.append(f"씬 {sc['scene_id']}: {last_err[:200]}")
 
         if i < len(scenes) - 1:
             time.sleep(inter_scene_delay)
 
-    return clip_paths
+    return clip_paths, errors

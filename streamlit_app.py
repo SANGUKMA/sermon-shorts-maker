@@ -167,7 +167,7 @@ def run_pipeline(inputs: dict):
         pct = 50 + int(35 * idx / total)
         progress.progress(pct, text=f"🎬 {msg} ({idx}/{total})")
 
-    clip_paths = generate_clips(
+    clip_paths, clip_errors = generate_clips(
         scenes=scenes,
         image_paths=image_paths,
         access_key=st.secrets["KLING_ACCESS_KEY"],
@@ -178,8 +178,13 @@ def run_pipeline(inputs: dict):
     success_count = sum(1 for c in clip_paths if c)
     log(f"✓ Kling 클립 {success_count}/{len(scenes)} 완료")
 
+    if clip_errors:
+        with st.expander(f"⚠️ Kling 실패 사유 ({len(clip_errors)}건) — 클릭해서 보기", expanded=True):
+            for err in clip_errors:
+                st.code(err)
+
     if success_count < len(scenes) // 2:
-        st.error(f"❌ Kling 생성 실패가 너무 많습니다 ({success_count}/{len(scenes)}). API 잔고를 확인하세요.")
+        st.error(f"❌ Kling 생성 실패가 너무 많습니다 ({success_count}/{len(scenes)}). 위 실패 사유를 확인하세요.")
         return None
 
     # ─── 6. FFmpeg 합성 ──────────────────────────────
@@ -277,6 +282,39 @@ with st.sidebar:
                 st.error(f"❌ /v1/voices/{{id}} {r.status_code}: {r.text[:200]}")
         except Exception as e:
             st.error(f"❌ voice 조회 예외: {e}")
+
+    if st.button("🔍 Kling 키 진단"):
+        import requests, time, jwt
+        ak = st.secrets.get("KLING_ACCESS_KEY", "")
+        sk = st.secrets.get("KLING_SECRET_KEY", "")
+        if not ak or not sk:
+            st.error("❌ KLING_ACCESS_KEY / KLING_SECRET_KEY 미설정")
+        else:
+            try:
+                token = jwt.encode(
+                    {"iss": ak, "exp": int(time.time()) + 1800,
+                     "nbf": int(time.time()) - 5},
+                    sk, algorithm="HS256",
+                )
+                r = requests.get(
+                    "https://api.klingai.com/v1/videos/image2video",
+                    headers={"Authorization": f"Bearer {token}"},
+                    params={"pageNum": 1, "pageSize": 1},
+                    timeout=15,
+                )
+                st.info(f"HTTP {r.status_code}")
+                try:
+                    body = r.json()
+                    st.code(str(body)[:500])
+                    code = body.get("code")
+                    if code == 0:
+                        st.success("✅ Kling 인증 OK")
+                    else:
+                        st.error(f"❌ Kling code={code}: {body.get('message', '?')}")
+                except Exception:
+                    st.code(r.text[:500])
+            except Exception as e:
+                st.error(f"❌ Kling 호출 예외: {e}")
 
     if st.button("🔄 새로 시작 (세션 초기화)"):
         for k in list(st.session_state.keys()):
