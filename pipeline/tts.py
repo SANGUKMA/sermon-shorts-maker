@@ -4,12 +4,15 @@
 ffmpeg atempo로 1.2배속 가속.
 """
 
+import logging
 import shutil
 import subprocess
 from pathlib import Path
 from pydub import AudioSegment
 
 from providers.tts.elevenlabs_provider import ElevenLabsProvider
+
+logger = logging.getLogger(__name__)
 
 
 def get_audio_duration(path: str) -> float:
@@ -44,6 +47,10 @@ def generate_tts(
 
     Returns: 최종 음성 길이(초)
     """
+    if Path(audio_path).exists() and Path(srt_path).exists():
+        logger.info(f"TTS 재사용: {audio_path}")
+        return get_audio_duration(audio_path)
+
     cfg = {
         "voice_id": voice_id,
         "model_id": model_id,

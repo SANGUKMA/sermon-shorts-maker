@@ -86,6 +86,7 @@ def run_pipeline(inputs: dict):
     title_img = run_dir / "title.png"
     church_img = run_dir / "church.png"
     final_video = run_dir / "video_shorts.mp4"
+    analysis_cache = run_dir / "analysis.json"
 
     style_label, style_suffix = PRESETS[inputs["style_key"]]
 
@@ -97,19 +98,41 @@ def run_pipeline(inputs: dict):
         logging.info(msg)
 
     # ─── 1. 설교 분석 (Claude) ──────────────────────
-    progress.progress(5, text="📖 설교 분석 중 (Claude)...")
-    log("Claude로 설교 원고를 챕터/씬으로 분석합니다 (1~2분)")
-    try:
-        analysis = analyze_sermon(
-            api_key=st.secrets["ANTHROPIC_API_KEY"],
-            sermon_text=inputs["sermon_text"],
-            title=inputs["title"],
-            scripture=inputs["scripture"],
-            style_label=style_label,
-        )
-    except Exception as e:
-        st.error(f"설교 분석 실패: {e}")
-        return None
+    import json, hashlib
+    cache_key = hashlib.sha256(
+        (inputs["sermon_text"] + "|" + inputs["title"] + "|"
+         + inputs["scripture"] + "|" + style_label).encode("utf-8")
+    ).hexdigest()
+    analysis = None
+    if analysis_cache.exists():
+        try:
+            cached = json.loads(analysis_cache.read_text(encoding="utf-8"))
+            if cached.get("_cache_key") == cache_key:
+                analysis = cached["data"]
+                progress.progress(15, text="📖 설교 분석 결과 재사용")
+                log("✓ 이전 Claude 분석 결과 재사용")
+        except Exception:
+            pass
+
+    if analysis is None:
+        progress.progress(5, text="📖 설교 분석 중 (Claude)...")
+        log("Claude로 설교 원고를 챕터/씬으로 분석합니다 (1~2분)")
+        try:
+            analysis = analyze_sermon(
+                api_key=st.secrets["ANTHROPIC_API_KEY"],
+                sermon_text=inputs["sermon_text"],
+                title=inputs["title"],
+                scripture=inputs["scripture"],
+                style_label=style_label,
+            )
+            analysis_cache.write_text(
+                json.dumps({"_cache_key": cache_key, "data": analysis},
+                           ensure_ascii=False),
+                encoding="utf-8",
+            )
+        except Exception as e:
+            st.error(f"설교 분석 실패: {e}")
+            return None
 
     chapters = analysis["chapters"]
     scenes = analysis["scenes"]
