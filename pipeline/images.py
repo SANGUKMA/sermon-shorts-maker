@@ -7,13 +7,55 @@ batch_delay 기본 12초 — Imagen 무료 티어 분당 5회 한도 회피.
 각 호출 시작/완료를 INFO 로그로 출력 (어디서 멈췄는지 진단 가능).
 """
 
+import io
 import time
 import logging
 from pathlib import Path
+from PIL import Image, ImageChops
 from google import genai
 from google.genai import types
 
 logger = logging.getLogger(__name__)
+
+
+def _trim_border(img_bytes: bytes, tag: str) -> bytes:
+    """만화 스타일에서 종종 생기는 흰 여백/액자 테두리를 잘라낸다.
+
+    프롬프트로 막는 게 완전하지 않아 후처리로 확실히 제거.
+    여백이 없으면 원본을 그대로 돌려준다.
+    """
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    w, h = img.size
+    bg = Image.new("RGB", img.size, (255, 255, 255))
+    # 여백 판정 완화 (순백이 아닌 254 같은 값도 여백으로 취급)
+    bbox = ImageChops.difference(img, bg).point(lambda p: 255 if p > 12 else 0).getbbox()
+    if not bbox:
+        return img_bytes
+
+    left, top, right, bottom = bbox
+    margin = max(left, top, w - right, h - bottom)
+    if margin < 4:
+        return img_bytes
+
+    # 액자 선 자체도 같이 날리도록 안쪽으로 조금 더 파고든다
+    inset = 3
+    left, top = left + inset, top + inset
+    right, bottom = right - inset, bottom - inset
+
+    # 정사각형 유지 — 짧은 변 기준 센터 크롭 후 원래 크기로 복원
+    side = min(right - left, bottom - top)
+    if side < w // 2:
+        logger.warning(f"  여백 제거 생략 — 크롭 결과가 너무 작음 ({tag})")
+        return img_bytes
+    cx, cy = (left + right) // 2, (top + bottom) // 2
+    half = side // 2
+    cropped = img.crop((cx - half, cy - half, cx + half, cy + half))
+    cropped = cropped.resize((w, h), Image.LANCZOS)
+
+    logger.info(f"  흰 여백 {margin}px 제거 — {tag}")
+    buf = io.BytesIO()
+    cropped.save(buf, format="PNG")
+    return buf.getvalue()
 
 
 def generate_image_1_1(
@@ -46,6 +88,7 @@ def generate_image_1_1(
     if not response.generated_images:
         raise ValueError("Imagen 응답에 이미지가 없음")
     img_bytes = response.generated_images[0].image.image_bytes
+    img_bytes = _trim_border(img_bytes, tag)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     Path(output_path).write_bytes(img_bytes)
     elapsed = time.time() - t0

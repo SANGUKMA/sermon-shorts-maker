@@ -9,7 +9,9 @@ EUROPEAN_COMIC = (
     "no gold filigree, no painted religious icons on walls, "
     "simple plain wooden cross only, modest church interior with wooden pews, "
     "natural daylight from plain windows (no stained glass with figures), "
-    "warm but reserved color palette"
+    "warm but reserved color palette, "
+    "full-bleed edge-to-edge composition, no panel borders, no frame lines, "
+    "no white margins, artwork fills the entire square canvas"
 )
 
 JAPANESE_ANIME = (
