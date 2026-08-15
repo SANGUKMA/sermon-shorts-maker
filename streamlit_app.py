@@ -212,7 +212,7 @@ def run_pipeline(inputs: dict):
 
     # ─── 6. FFmpeg 합성 ──────────────────────────────
     progress.progress(85, text="🎞️ 9:16 컴포지트 합성 중...")
-    compose_final(
+    cut_sec = compose_final(
         clip_paths=clip_paths,
         audio_path=str(audio_path),
         title_img=str(title_img),
@@ -221,6 +221,13 @@ def run_pipeline(inputs: dict):
         bgm_path=None,  # MVP에선 BGM 없음
     )
     log(f"✓ 최종 영상 합성 완료")
+
+    if cut_sec > 1.0:
+        st.warning(
+            f"⚠️ 영상 길이가 부족해 나레이션 뒷부분 {cut_sec:.0f}초가 잘렸습니다. "
+            f"Kling 클립 {success_count}/{len(scenes)}개만 생성되어 영상이 짧습니다. "
+            "위 실패 사유를 확인하고 다시 실행하면 성공한 클립은 재사용됩니다."
+        )
 
     # ─── 7. 메타데이터 ───────────────────────────────
     progress.progress(95, text="📝 YouTube 메타데이터 생성...")

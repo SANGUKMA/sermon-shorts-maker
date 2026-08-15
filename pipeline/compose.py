@@ -25,6 +25,17 @@ BOTTOM_BAR_H = 280
 NAVY_HEX = "0x0F2557"
 
 
+def _probe_duration(path) -> float:
+    r = subprocess.run([
+        "ffprobe", "-v", "error", "-show_entries", "format=duration",
+        "-of", "default=nw=1:nk=1", str(path),
+    ], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    try:
+        return float(r.stdout.strip())
+    except ValueError:
+        return 0.0
+
+
 def concat_clips(clip_paths: list, out_path: str, work_dir: Path):
     """N개 Kling 클립을 하나로 이어붙임 (재인코딩 통일)"""
     valid = [c for c in clip_paths if c and Path(c).exists()]
@@ -136,5 +147,17 @@ def compose_final(
         if Path(output_path).exists():
             Path(output_path).unlink()
         shutil.copy2(out_a, output_path)
+
+        # -shortest 때문에 영상이 나레이션보다 짧으면 뒷부분이 조용히 잘린다.
+        # (Kling 클립 일부 실패 시 발생) 잘린 초 수를 돌려준다.
+        narration_sec = _probe_duration(in_audio)
+        final_sec = _probe_duration(out_a)
+        cut_sec = max(0.0, narration_sec - final_sec)
+        if cut_sec > 1.0:
+            logger.warning(
+                f"나레이션 {cut_sec:.1f}초가 잘렸습니다 "
+                f"(나레이션 {narration_sec:.1f}초 > 영상 {final_sec:.1f}초)"
+            )
+        return cut_sec
     finally:
         shutil.rmtree(work, ignore_errors=True)
