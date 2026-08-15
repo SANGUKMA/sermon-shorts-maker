@@ -17,6 +17,14 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_NEGATIVE = "blurry, distorted, text, watermark, low quality, deformed"
 
+# 429지만 기다려도 절대 풀리지 않는 원인 — 재시도 없이 즉시 중단한다
+FATAL_MARKERS = ("1102", "balance not enough", "account arrears")
+
+
+def _is_fatal(err: str) -> bool:
+    low = err.lower()
+    return any(m in low for m in FATAL_MARKERS)
+
 
 def generate_clips(
     scenes: list,
@@ -55,7 +63,12 @@ def generate_clips(
 
     clip_paths = []
     errors = []
+    aborted = False
     for i, (sc, img) in enumerate(zip(scenes, image_paths)):
+        if aborted:
+            clip_paths.append("")
+            continue
+
         out = clips_dir / f"scene_{sc['scene_id']:02d}.mp4"
 
         if out.exists():
@@ -84,6 +97,17 @@ def generate_clips(
                 break
             except Exception as e:
                 last_err = str(e)
+                if _is_fatal(last_err):
+                    logger.error(f"클립 {sc['scene_id']} 중단 — 재시도 무의미: {last_err}")
+                    errors.append(
+                        f"씬 {sc['scene_id']}: Kling API 잔액 부족 (code 1102). "
+                        "웹 크레딧과 별개인 API 리소스 팩을 "
+                        "https://app.klingai.com/global/dev/ 에서 충전하세요. "
+                        f"원문: {last_err[:150]}"
+                    )
+                    clip_paths.append("")
+                    aborted = True
+                    break
                 if "429" in last_err:
                     logger.warning(f"클립 {sc['scene_id']} 429 (시도 {attempt+1}/3) — {wait_after}s 대기")
                     if progress_cb:
@@ -101,7 +125,7 @@ def generate_clips(
             if last_err and not any(f"씬 {sc['scene_id']}:" in x for x in errors):
                 errors.append(f"씬 {sc['scene_id']}: {last_err[:200]}")
 
-        if i < len(scenes) - 1:
+        if not aborted and i < len(scenes) - 1:
             time.sleep(inter_scene_delay)
 
     return clip_paths, errors

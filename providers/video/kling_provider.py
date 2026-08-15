@@ -108,6 +108,10 @@ class KlingI2VProvider:
             json=payload,
             timeout=30,
         )
+        # 429는 응답 본문에 원인 코드가 담긴다 (1102=잔액 부족 등).
+        # raise_for_status()는 본문을 버리므로 직접 올린다.
+        if resp.status_code == 429:
+            raise RuntimeError(f"Kling 429: {resp.text[:300]}")
         resp.raise_for_status()
         data = resp.json()
 
