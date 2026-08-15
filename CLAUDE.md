@@ -33,6 +33,9 @@
 ### 사용량 제어 (이미 학습한 위험)
 
 - Kling API는 **계정별 동시성 한도** 있음. 각 클립 사이 30초 대기 + 429 백오프 필수. 예전에 8개 연속 제출하다 모두 실패한 경험.
+- **Kling 429는 두 가지 뜻**. 진짜 rate limit이면 백오프가 맞지만, 응답 본문 `code:1102`("Account balance not enough")는 기다려도 절대 안 풀린다. `raise_for_status()`는 본문을 버리므로 429일 때 본문을 직접 읽어야 구분 가능. `pipeline/clips.py`가 1102면 즉시 중단하도록 처리됨 — 안 그러면 10씬 × 30/90/180초 = **약 50분 대기 후 실패**.
+- **Kling 웹 크레딧 ≠ API 리소스 팩**. app.klingai.com 화면에 크레딧이 남아 있어도 API는 1102를 낸다. `GET /account/costs`의 `resource_pack_subscribe_infos`가 비어 있으면 팩이 없는 것. 별도 구매 필요.
+- **리소스 팩은 구매 직후 API에 즉시 반영되지 않는다.** 팩 `effective_time` 이후 37초 시점 호출이 여전히 1102였고, 그 다음 시도에서 통과. 구매 직후 실패하면 키·코드부터 의심하지 말고 1분쯤 뒤 재시도할 것.
 - Imagen은 분당 6초 정도 batch_delay 권장.
 - ElevenLabs Professor ma(W9zbcgJ4rDpkhoG8WtRU) 같은 voice_id를 다른 사람이 사용하면 안 됨.
 
