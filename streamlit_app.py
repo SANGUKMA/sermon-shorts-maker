@@ -31,6 +31,7 @@ from pipeline.tts import generate_tts
 from pipeline.titles import render_title_image, render_church_image
 from pipeline.images import generate_images
 from pipeline.clips import generate_clips
+from pipeline.kenburns import generate_kenburns_clips
 from pipeline.compose import compose_final
 from pipeline.metadata import generate_metadata
 
@@ -183,31 +184,47 @@ def run_pipeline(inputs: dict):
         for i, p in enumerate(image_paths):
             cols[i % 5].image(p, caption=f"씬 {i+1}", use_container_width=True)
 
-    # ─── 5. Kling I2V (10클립) ──────────────────────
-    progress.progress(50, text=f"🎬 Kling I2V 영상 클립 생성 (0/{len(scenes)}, ~12분)...")
+    # ─── 5. 영상 클립 (앞부분 Kling, 나머지 Ken Burns) ──
+    n_kling = min(inputs["kling_count"], len(scenes))
+    progress.progress(50, text=f"🎬 영상 클립 생성 (Kling {n_kling}개 + 모션 {len(scenes)-n_kling}개)...")
 
     def clip_progress(idx, total, msg):
         pct = 50 + int(35 * idx / total)
         progress.progress(pct, text=f"🎬 {msg} ({idx}/{total})")
 
-    clip_paths, clip_errors = generate_clips(
-        scenes=scenes,
-        image_paths=image_paths,
-        access_key=st.secrets["KLING_ACCESS_KEY"],
-        secret_key=st.secrets["KLING_SECRET_KEY"],
-        clips_dir=clips_dir,
-        progress_cb=clip_progress,
-    )
+    clip_paths, clip_errors = [], []
+    if n_kling:
+        clip_paths, clip_errors = generate_clips(
+            scenes=scenes[:n_kling],
+            image_paths=image_paths[:n_kling],
+            access_key=st.secrets["KLING_ACCESS_KEY"],
+            secret_key=st.secrets["KLING_SECRET_KEY"],
+            clips_dir=clips_dir,
+            progress_cb=clip_progress,
+        )
+
+    if n_kling < len(scenes):
+        # Kling과 다른 폴더에 쓴다. 같은 폴더면 Kling 클립 수를 늘려 재실행할 때
+        # 기존 모션 클립이 재사용돼 Kling이 돌지 않는다.
+        kb_paths, kb_errors = generate_kenburns_clips(
+            scenes=scenes[n_kling:],
+            image_paths=image_paths[n_kling:],
+            clips_dir=clips_dir / "motion",
+            progress_cb=clip_progress,
+        )
+        clip_paths += kb_paths
+        clip_errors += kb_errors
+
     success_count = sum(1 for c in clip_paths if c)
-    log(f"✓ Kling 클립 {success_count}/{len(scenes)} 완료")
+    log(f"✓ 클립 {success_count}/{len(scenes)} 완료 (Kling {n_kling}, 모션 {len(scenes)-n_kling})")
 
     if clip_errors:
-        with st.expander(f"⚠️ Kling 실패 사유 ({len(clip_errors)}건) — 클릭해서 보기", expanded=True):
+        with st.expander(f"⚠️ 클립 실패 사유 ({len(clip_errors)}건) — 클릭해서 보기", expanded=True):
             for err in clip_errors:
                 st.code(err)
 
     if success_count < len(scenes) // 2:
-        st.error(f"❌ Kling 생성 실패가 너무 많습니다 ({success_count}/{len(scenes)}). 위 실패 사유를 확인하세요.")
+        st.error(f"❌ 클립 생성 실패가 너무 많습니다 ({success_count}/{len(scenes)}). 위 실패 사유를 확인하세요.")
         return None
 
     # ─── 6. FFmpeg 합성 ──────────────────────────────
@@ -272,6 +289,12 @@ with st.sidebar:
         format_func=lambda k: PRESETS[k][0],
         index=0,
     )
+    kling_count = st.slider(
+        "Kling 영상 클립 수", min_value=0, max_value=10, value=3,
+        help="앞쪽 N개 씬만 Kling으로 실제 움직이는 영상을 만들고, "
+             "나머지는 그림에 팬/줌 모션을 넣습니다. Kling은 클립당 3 units 듭니다.",
+    )
+    st.caption(f"예상 Kling 사용량: **{kling_count * 3} units**")
     st.divider()
     _vid = st.secrets.get("ELEVENLABS_VOICE_ID", "")
     _key = st.secrets.get("ELEVENLABS_API_KEY", "")
@@ -400,6 +423,7 @@ if generate_btn:
         "church_name": church_name,
         "sermon_text": sermon_text,
         "style_key": style_key,
+        "kling_count": kling_count,
     }
     try:
         result = run_pipeline(inputs)
