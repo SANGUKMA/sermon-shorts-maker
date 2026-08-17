@@ -47,14 +47,28 @@ def concat_clips(clip_paths: list, out_path: str, work_dir: Path):
         "\n".join(f"file '{Path(c).resolve().as_posix()}'" for c in valid),
         encoding="utf-8",
     )
-    subprocess.run([
+    cmd = [
         "ffmpeg", "-y", "-hide_banner", "-loglevel", "warning",
         "-f", "concat", "-safe", "0", "-i", str(list_file),
         "-c:v", "libx264", "-preset", "medium", "-crf", "16",
         "-pix_fmt", "yuv420p", "-r", "30",
         "-an", out_path,
-    ], check=True, capture_output=True, text=True, encoding="utf-8",
-       errors="replace")
+    ]
+    # 이 단계가 클립 10개쯤에서 간헐적으로 죽는다 (Windows ACCESS_VIOLATION,
+    # exit 3221225477). 8회 중 2회. 프리셋·입력과 무관하고 재실행하면 통과한다.
+    # 여기서 실패하면 Kling 비용을 이미 다 쓴 뒤라 재시도로 살린다.
+    for attempt in range(3):
+        r = subprocess.run(cmd, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+        if r.returncode == 0:
+            return
+        logger.warning(
+            f"concat 실패 (시도 {attempt+1}/3, exit {r.returncode}) — 재시도"
+        )
+    raise RuntimeError(
+        f"클립 이어붙이기가 3회 모두 실패했습니다 (마지막 exit {r.returncode}). "
+        f"{(r.stderr or '').strip()[:300]}"
+    )
 
 
 def compose_final(
